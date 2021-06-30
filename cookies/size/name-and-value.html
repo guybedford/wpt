@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset=utf-8>
+  <title>Test cookie name size restrictions</title>
+  <meta name=help href="https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-rfc6265bis#section-5.4">
+  <meta name="timeout" content="long">
+  <script src="/resources/testharness.js"></script>
+  <script src="/resources/testharnessreport.js"></script>
+  <script src="/cookies/resources/cookie-test.js"></script>
+</head>
+
+<body>
+  <div id=log></div>
+  <script>
+    const nameAndValueSizeTests = [
+      {
+        // 4095 + 1 = 4096 (not including equals sign)
+        cookie: `test=${"1".repeat(4092)}`,
+        expected: `test=${"1".repeat(4092)}`,
+        name: "Set max-size cookie with largest possible name (4095 bytes)",
+      },
+      {
+        // 4096 + 1 = 4097 (not including equals sign)
+        cookie: `test=${"2".repeat(4093)}`,
+        expected: "",
+        name: "Ignore cookie with name larger than 4096 and 1 byte value",
+      },
+      {
+        // 4096 + 0 = 4096 (not including equals sign)
+        cookie: `test${"3".repeat(4092)}=`,
+        expected: `test${"3".repeat(4092)}=`,
+        name: "Set max-size value-less cookie",
+      },
+      {
+        // 4097 + 0 = 4097 (not including equals sign)
+        cookie: `test${"4".repeat(4093)}=`,
+        expected: "",
+        name: "Ignore value-less cookie with name larger than 4096 bytes",
+      },
+      {
+        // 1 + 4095 = 4096 (not including equals sign)
+        cookie: `t=${"1".repeat(4095)}`,
+        expected: `t=${"1".repeat(4095)}`,
+        name: "Set max-size cookie with largest possible value (4095 bytes)",
+      },
+      {
+        // 1 + 4096 = 4097 (not including equals sign)
+        cookie: `t=${"2".repeat(4096)}`,
+        expected: "",
+        name: "Ignore cookie with largest possible value",
+      },
+      {
+        // 0 + 4096 = 4096 (not including equals sign)
+        cookie: `test${"3".repeat(4092)}`,
+        expected: `test${"3".repeat(4092)}`,
+        name: "Set max-size name-less cookie",
+      },
+      {
+        // 0 + 4097 = 4097 (not including equals sign)
+        cookie: `test${"4".repeat(4093)}`,
+        expected: "",
+        name: "Ignore name-less cookie with value larger than 4096 bytes",
+      },
+    ];
+
+    for (const test of nameAndValueSizeTests) {
+      httpCookieTest(test.cookie, test.expected, test.name);
+    }
+  </script>
+</body>
+
+</html>
