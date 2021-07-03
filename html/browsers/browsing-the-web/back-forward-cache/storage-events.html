@@ -1,0 +1,55 @@
+<!DOCTYPE HTML>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="/common/utils.js"></script>
+<script src="/html/cross-origin-embedder-policy/credentialless/resources/dispatcher.js"></script>
+<script src="resources/helper.sub.js"></script>
+<script>
+// https://github.com/whatwg/storage/issues/119#issuecomment-785771108
+promise_test(async t => {
+  const idA = token();
+  const idB = token();
+  const key = token();
+
+  window.open(
+    executorPath + idA + '&events=visibilitychange,pagehide,pageshow,load',
+    '_blank', 'noopener');
+
+  await send(idA, `
+    window.promiseStorageEvent = new Promise(resolve => {
+      window.addEventListener('storage', e => {
+        if (e.key === '${key}') {
+          recordEvent('storage');
+          resolve();
+        }
+      });
+    });
+  `);
+
+  await navigate(idA, originCrossSite + executorPath + idB);
+
+  assert_equals(await evalOn(idB, `'Navigated'`), 'Navigated');
+
+  localStorage.setItem(key, 'value');
+
+  await send(idB, 'history.back()');
+
+  await assert_bfcached(idA);
+
+  await send(idA, 'await window.promiseStorageEvent');
+
+  assert_array_equals(
+    await evalOn(idA, `getRecordedEvents()`),
+    [
+      'window.load',
+      'window.pageshow',
+      'window.pagehide.persisted',
+      'document.visibilitychange.hidden',
+      'window.visibilitychange.hidden',
+      'document.visibilitychange.visible',
+      'window.visibilitychange.visible',
+      'window.pageshow.persisted',
+      'storage',
+    ]);
+}, 'Storage events should be fired for BFCached pages after becoming active');
+</script>
